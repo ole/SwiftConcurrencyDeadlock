@@ -11,6 +11,8 @@ struct Main {
 func performWork() async throws {
     let imageURL = findResourceInBundle("church-of-the-king-j9jZSqfH5YI-unsplash.jpg")!
     try await withThrowingTaskGroup(of: (id: Int, faceCount: Int).self) { group in
+        // This deadlocks when the number of child tasks is larger than the
+        // number of CPU cores on your machine. Try using a smaller range.
         for i in 1...50 {
             group.addTask {
                 print("Task \(i) starting")
