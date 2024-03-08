@@ -11,6 +11,11 @@ let package = Package(
             name: "VisionDeadlock",
             resources: [
                 .copy("Resources"),
+            ],
+            swiftSettings: [
+                // With `swift-tools-version: 6.0` or greater, this must be
+                // .enableUpcomingFeature("StrictConcurrency"),
+                .enableExperimentalFeature("StrictConcurrency"),
             ]
         ),
     ]
