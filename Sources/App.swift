@@ -9,12 +9,7 @@ struct Main {
 }
 
 func performWork() async throws {
-    let imageURL = Bundle.module.bundleURL
-        .appending(
-            components: "Contents", "Resources", "Resources",
-                "church-of-the-king-j9jZSqfH5YI-unsplash.jpg",
-            directoryHint: .notDirectory
-        )
+    let imageURL = findResourceInBundle("church-of-the-king-j9jZSqfH5YI-unsplash.jpg")!
     try await withThrowingTaskGroup(of: (id: Int, faceCount: Int).self) { group in
         for i in 1...50 {
             group.addTask {
@@ -28,6 +23,26 @@ func performWork() async throws {
         }
         for try await (id, faceCount) in group {
             print("Task \(id) detected \(faceCount) faces")
+        }
+    }
+}
+
+func findResourceInBundle(_ filename: String) -> URL? {
+    // The Bundle.module bundle has a different structure, depending on whether
+    // you build the program with SwiftPM (`swift build`) or with Xcode.
+    // Try to account for both structures.
+    if let fileURL = Bundle.module.url(forResource: filename, withExtension: nil, subdirectory: "Resources") {
+        return fileURL
+    } else {
+        let fileURL = Bundle.module.bundleURL
+            .appending(
+                components: "Contents", "Resources", "Resources", filename,
+                directoryHint: .notDirectory
+            )
+        if FileManager.default.fileExists(atPath: fileURL.path(percentEncoded: false)) {
+            return fileURL
+        } else {
+            return nil
         }
     }
 }
