@@ -13,7 +13,7 @@ func performWork() async throws {
     try await withThrowingTaskGroup(of: (id: Int, faceCount: Int).self) { group in
         // This deadlocks when the number of child tasks is larger than the
         // number of CPU cores on your machine. Try using a smaller range.
-        for i in 1...50 {
+        for i in 1...25 {
             group.addTask {
                 print("Task \(i) starting")
                 let request = VNDetectFaceRectanglesRequest()
