@@ -4,7 +4,10 @@ import Vision
 @main
 struct Main {
     static func main() async throws {
+        // Pick one of these variants:
         try await performWork()
+        // try await performWorkWithUnboundedThreadExplosion()
+        // try await performWorkUsingGCD(maxConcurrency: 5)
     }
 }
 
@@ -31,7 +34,7 @@ func performWork() async throws {
 
 /// Alternative implementation that "fixes" the deadlock
 /// until you create so many child tasks that you exhaust the GCD limit.
-func performWorkUsingGCD() async throws {
+func performWorkWithUnboundedThreadExplosion() async throws {
     let imageURL = findResourceInBundle("church-of-the-king-j9jZSqfH5YI-unsplash.jpg")!
     try await withThrowingTaskGroup(of: (id: Int, faceCount: Int).self) { group in
         // This "fixes" the deadlock at the cost of thread explosion.
@@ -50,6 +53,48 @@ func performWorkUsingGCD() async throws {
                             c.resume(returning: (id: i, faceCount: faces.count))
                         } catch {
                             c.resume(throwing: error)
+                        }
+                    }
+                }
+            }
+        }
+        for try await (id, faceCount) in group {
+            print("Task \(id) detected \(faceCount) faces")
+        }
+    }
+}
+
+/// Alternative implementation that fixes the deadlock.
+///
+/// Based on:
+///
+/// - Gwendal Roué’s reply on the Swift forums: https://forums.swift.org/t/cooperative-pool-deadlock-when-calling-into-an-opaque-subsystem/70685/3
+/// - Souroush Khanlou, The GCD handbook: https://khanlou.com/2016/04/the-GCD-handbook/
+/// - Mike Rhodes, Limiting concurrent execution using GCD: https://web.archive.org/web/20160613023817/https://dx13.co.uk/articles/2016/6/4/limiting-concurrent-execution-using-gcd.html
+func performWorkUsingGCD(maxConcurrency: Int) async throws {
+    let imageURL = findResourceInBundle("church-of-the-king-j9jZSqfH5YI-unsplash.jpg")!
+    try await withThrowingTaskGroup(of: (id: Int, faceCount: Int).self) { group in
+        let semaphore = DispatchSemaphore(value: maxConcurrency)
+        let semaphoreWaitQueue = DispatchQueue(label: "maxConcurrency control")
+        for i in 1...100 {
+            group.addTask {
+                print("Task \(i) starting")
+                return try await withUnsafeThrowingContinuation { c in
+                    semaphoreWaitQueue.async {
+                        semaphore.wait()
+                        DispatchQueue.global().async {
+                            defer {
+                                semaphore.signal()
+                            }
+                            do {
+                                let request = VNDetectFaceRectanglesRequest()
+                                let requestHandler = VNImageRequestHandler(url: imageURL)
+                                try requestHandler.perform([request])
+                                let faces = request.results ?? []
+                                c.resume(returning: (id: i, faceCount: faces.count))
+                            } catch {
+                                c.resume(throwing: error)
+                            }
                         }
                     }
                 }
