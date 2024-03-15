@@ -6,8 +6,8 @@ struct Main {
     static func main() async throws {
         // Pick one of these variants:
         try await performWork()
-        // try await performWorkWithUnboundedThreadExplosion()
-        // try await performWorkUsingGCD(maxConcurrency: 5)
+//        try await performWorkWithUnboundedThreadExplosion()
+//        try await performWorkUsingGCD(maxConcurrency: 5)
     }
 }
 
@@ -43,7 +43,7 @@ func performWorkWithUnboundedThreadExplosion() async throws {
         for i in 1...64 {
             group.addTask {
                 print("Task \(i) starting")
-                return try await withUnsafeThrowingContinuation { c in
+                return try await withCheckedThrowingContinuation { c in
                     DispatchQueue.global().async {
                         do {
                             let request = VNDetectFaceRectanglesRequest()
@@ -79,7 +79,7 @@ func performWorkUsingGCD(maxConcurrency: Int) async throws {
         for i in 1...100 {
             group.addTask {
                 print("Task \(i) starting")
-                return try await withUnsafeThrowingContinuation { c in
+                return try await withCheckedThrowingContinuation { c in
                     semaphoreWaitQueue.async {
                         semaphore.wait()
                         DispatchQueue.global().async {
